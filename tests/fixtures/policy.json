@@ -1,0 +1,24 @@
+{
+  "version": "1.0",
+  "auto_remediate": true,
+  "max_blast_radius": 15,
+  "require_approval": false,
+  "allowed_severities": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"],
+  "protected_resources": [
+    ".*production-database.*",
+    ".*prod-vpc.*",
+    ".*core-iam-root.*"
+  ],
+  "action_overrides": {
+    "aws_s3_bucket": "UPDATE"
+  },
+  "rules": [
+    {
+      "name": "Force Alert on Ingress World Wide Access",
+      "resource_type": "aws_security_group",
+      "drift_type": "MODIFIED",
+      "action": "UPDATE",
+      "requires_gate": false
+    }
+  ]
+}

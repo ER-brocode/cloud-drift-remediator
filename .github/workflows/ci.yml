@@ -1,0 +1,107 @@
+name: CI / Multi-Cloud Drift Remediator Engine
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  lint-and-vet:
+    name: Lint & Static Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          check-latest: true
+
+      - name: Verify Dependencies
+        run: |
+          go mod verify
+
+      - name: Run Go Vet
+        run: |
+          go vet ./...
+
+  test-suite:
+    name: Test Suite & Coverage (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          check-latest: true
+
+      - name: Run Automated Unit & Integration Tests
+        run: |
+          go test -v -coverprofile=coverage.out -covermode=atomic ./...
+
+      - name: Upload Test Coverage
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-coverage-report
+          path: coverage.out
+
+  build-artifacts:
+    name: Build Cross-Platform Binaries
+    needs: [lint-and-vet, test-suite]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            output_name: remediator-linux-amd64
+          - goos: linux
+            goarch: arm64
+            output_name: remediator-linux-arm64
+          - goos: darwin
+            goarch: amd64
+            output_name: remediator-darwin-amd64
+          - goos: darwin
+            goarch: arm64
+            output_name: remediator-darwin-arm64
+          - goos: windows
+            goarch: amd64
+            output_name: remediator-windows-amd64.exe
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Compile Binary (${{ matrix.goos }}/${{ matrix.goarch }})
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+        run: |
+          go build -ldflags="-s -w -X main.Version=${{ github.ref_name }}" -o bin/${{ matrix.output_name }} ./cmd/remediator
+
+      - name: Upload Binary Release Asset
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.output_name }}
+          path: bin/${{ matrix.output_name }}

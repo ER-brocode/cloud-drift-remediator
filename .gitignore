@@ -1,0 +1,25 @@
+# Binaries and build outputs
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+dist/
+
+# Test artifacts and coverage
+*.out
+*.test
+coverage.txt
+coverage.out
+
+# Audit and operational logs
+*.log
+audit.log
+
+# IDE & OS files
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
